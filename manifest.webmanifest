@@ -1,7 +1,7 @@
 {
-  "name": "Food Planner – meals & calories",
-  "short_name": "Food Planner",
-  "description": "Meal planner and calorie tracker with meal ideas and Apple Watch calories.",
+  "name": "My Space",
+  "short_name": "My Space",
+  "description": "Calorie deficit tracker, meal plan, timetable, Mandarin flashcards and a focus timer.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

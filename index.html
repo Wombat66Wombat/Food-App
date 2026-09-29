@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Food Planner</title>
-  <meta name="description" content="Meal planner and calorie tracker with smart meal ideas and Apple Watch calories.">
+  <title>My Space</title>
+  <meta name="description" content="Your organized space: calorie deficit tracker, meal plan, timetable, Mandarin flashcards and a focus timer.">
   <meta name="theme-color" content="#16a34a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Food Planner">
+  <meta name="apple-mobile-web-app-title" content="My Space">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-180.png">
@@ -17,22 +17,28 @@
 </head>
 <body>
   <header class="topbar">
-    <h1 id="view-title">Today</h1>
-    <div id="topbar-extra"></div>
+    <h1 id="view-title">Food</h1>
+    <div class="row">
+      <div id="topbar-extra"></div>
+      <button class="icon-btn gear" id="settings-btn" aria-label="Settings">⚙️</button>
+    </div>
   </header>
 
   <main id="app">
-    <section id="view-today" class="view" aria-label="Today"></section>
-    <section id="view-plan" class="view" aria-label="Meal plan" hidden></section>
-    <section id="view-ideas" class="view" aria-label="Meal ideas" hidden></section>
-    <section id="view-me" class="view" aria-label="Preferences" hidden></section>
+    <section id="view-food" class="view" aria-label="Food"></section>
+    <section id="view-meals" class="view" aria-label="Meals" hidden></section>
+    <section id="view-timetable" class="view" aria-label="Timetable" hidden></section>
+    <section id="view-mandarin" class="view" aria-label="Mandarin" hidden></section>
+    <section id="view-focus" class="view" aria-label="Focus" hidden></section>
+    <section id="view-settings" class="view" aria-label="Settings" hidden></section>
   </main>
 
   <nav class="tabbar" aria-label="Main">
-    <button class="tab active" data-view="today"><span class="tab-icon" aria-hidden="true">🍽️</span>Today</button>
-    <button class="tab" data-view="plan"><span class="tab-icon" aria-hidden="true">📅</span>Plan</button>
-    <button class="tab" data-view="ideas"><span class="tab-icon" aria-hidden="true">💡</span>Ideas</button>
-    <button class="tab" data-view="me"><span class="tab-icon" aria-hidden="true">⚙️</span>Me</button>
+    <button class="tab active" data-view="food"><span class="tab-icon" aria-hidden="true">🍽️</span>Food</button>
+    <button class="tab" data-view="meals"><span class="tab-icon" aria-hidden="true">🥗</span>Meals</button>
+    <button class="tab" data-view="timetable"><span class="tab-icon" aria-hidden="true">🗓️</span>Timetable</button>
+    <button class="tab" data-view="mandarin"><span class="tab-icon" aria-hidden="true">🀄</span>中文</button>
+    <button class="tab" data-view="focus"><span class="tab-icon" aria-hidden="true">⏱️</span>Fokus</button>
   </nav>
 
   <dialog id="sheet" class="sheet">

@@ -1,68 +1,92 @@
-# Food Planner 🥗
+# My Space ✨
 
-A meal planner and calorie tracker that runs in the browser and can be installed on your iPhone home screen.
+Your organized space in one app: a calorie **deficit** tracker, meal planner, **timetable**, **Mandarin flashcards** and a **focus timer**, all in one theme. It runs in the browser and can be installed on your iPhone home screen.
 
-## Features
+**Live app:** https://wombat66wombat.github.io/Food-App/ (after GitHub Pages is turned on, see below)
 
-- **Type what you ate, see the calories.** Write it the way you'd say it, e.g. `2 eggs, 1 slice toast with butter, coffee with milk`, and each item is broken down with grams, calories and protein/carbs/fat as you type.
-  - Understands amounts like `150g`, `1 cup`, `2 tbsp`, `half an avocado`, `a banana`, `chicken 150g`, `two glasses of wine`.
-  - Handles small typos (`brocoli`, `banan`).
-  - Anything it doesn't know? Write the calories yourself: `pizza from work 285 kcal`. You can also save your own foods under **Me → My foods**.
-- **Apple Watch calories.** Enter the active calories you burned (your Move ring), or sync them with an iPhone Shortcut (see below). They're added to your budget for the day, and you can choose to count only part of them (100/75/50/0%).
-- **Recommendations.** The **Ideas** tab suggests meals that fit the calories you have left for your next meal. They're ranked by:
-  - the foods, cuisines and styles you **like** (chicken, spicy, pasta, quick…)
-  - never including what you **don't like**
-  - your diet (vegetarian, pescatarian, vegan) and allergies (gluten, dairy, nuts, eggs, fish)
-  - ❤️ favourites, and 👎 hides an idea for good
-- **Weekly meal plan.** Plan breakfast, lunch, dinner and snacks for each day, or tap **✨ Fill empty slots** to fill the week from your preferences. You can then log a planned day to the tracker in one tap, and get a **🛒 shopping list** for the week.
-- **Daily goal calculator** (Mifflin-St Jeor), macro bars, and daily tips.
-- Works offline. All data stays on your device, and you can export or import a backup.
+## Sections
 
-## Run it
+### 🍽️ Food: calorie deficit
+- Set your **maintenance calories** (what you burn on a normal day *without* workouts) and a **deficit %** (10–25%). The app works out your daily **eating target**, e.g. 2000 kcal − 20% = 1600 kcal.
+- Apple Watch calories **do not** raise what you can eat. They make your deficit bigger instead.
+- The day's result is `maintenance + burned − eaten`. You meet your goal when that is at least your deficit goal. A 7-day strip shows ✓ or ✗ for each day, plus your weekly deficit in kg.
+- Type what you ate the way you'd say it, e.g. `2 eggs, 1 slice toast with butter, coffee with milk`, and you'll see calories and macros as you type.
+- To sync burned calories, see "Apple Watch sync" below.
 
-It's plain HTML/CSS/JavaScript with no build step and no dependencies.
+### 🥗 Meals
+- **Week plan:** plan each meal slot, or tap **✨ Fill empty slots** to fill them from your preferences. You can log a planned day in one tap and get a 🛒 shopping list.
+- **Ideas:** suggestions that fit what you can still eat today, ranked by your likes, dislikes, diet, allergies and ❤️ favourites.
 
+### 🗓️ Timetable
+- A weekly schedule that repeats every week: classes, work, gym… Add an entry to several days at once and give it a color.
+- The Day view shows **Now** and **Next**, with how long until the next thing starts. The Week view shows the whole week.
+
+### 🀄 中文 Mandarin flashcards
+- Write your own cards every day: 汉字, pinyin (type `ni3 hao3` and it becomes `nǐ hǎo`), meaning, and an optional example. The daily goal is 5 new cards by default, and a 🔥 streak counts the days in a row you hit it.
+- **Practice** uses spaced repetition: cards you know come back after 1, 2, 4, 7, 14… days, and cards you miss come back today. You can practise 汉字 → meaning or meaning → 汉字.
+- **Writing pad** with a 田字格 grid: write the character, tap **Trace** to show it faintly underneath, and 🔊 plays the pronunciation.
+
+### ⏱️ Fokus: "Nicht lernen. Nur anfangen."
+- Focus timer: Nur 5 Min / Fokus 25 / Pause 5. It beeps and vibrates when it's done, and keeps running while you're in other sections.
+- **Aufgabe zerlegen:** break a task into tiny steps and tick them off.
+- **Startklar in 2 Minuten:** a short checklist.
+- **Heute geschafft:** focus sessions, minutes and steps done today.
+
+### ⚙️ Settings: one theme everywhere
+- **📱 Match phone** follows your iPhone's light or dark mode automatically. You can also force ☀️ Light or 🌙 Dark.
+- **Color themes:** Matcha, Ocean, Lavender, Sunset, Rose, Lagoon, Graphite.
+- **Match your wallpaper:** pick your wallpaper photo (or a home screen screenshot) and the whole app takes its accent color from it. You can also show the wallpaper behind the app.
+- Also here: food preferences, My foods, Apple Watch sync, the Mandarin daily goal, and backup export/import.
+
+## Launch it
+
+### Put it online (free, once)
+1. Open **https://github.com/Wombat66Wombat/Food-App/settings/pages**
+2. **Source:** Deploy from a branch → Branch `claude/meal-plan-calorie-tracker-lbrplh`, folder `/ (root)` → **Save**.
+3. After 1–2 minutes it's live at **https://wombat66wombat.github.io/Food-App/**
+
+### Put it on your iPhone
+Open the link in **Safari** → **Share** → **Add to Home Screen**.
+
+### Run locally
 ```bash
-npm start          # serves on http://localhost:8080 (python3 http.server)
-npm test           # runs the parser & recommendation tests (Node 18+)
+npm start   # http://localhost:8080
+npm test    # unit tests (Node 18+)
 ```
 
-### Put it on your phone
+## Apple Watch sync
+A website can't read Apple Health directly, but an iPhone Shortcut can:
 
-1. Host the folder anywhere static. The easiest option is **GitHub Pages**: repo **Settings → Pages → Deploy from a branch**, then pick the branch and `/ (root)`.
-2. Open the URL in Safari on your iPhone → **Share → Add to Home Screen**.
-
-## Syncing Apple Watch calories
-
-A website can't read Apple Health directly, but an iPhone Shortcut can pass today's Active Energy to the app:
-
-1. Open **Shortcuts** → **+** → name it “Sync calories”.
+1. **Shortcuts** → **+** → name it “Sync calories”.
 2. **Find Health Samples** where Type is *Active Energy* and Start Date *is today*.
-3. **Calculate Statistics** → *Sum* of Health Samples.
-4. **Round Number**.
-5. **Copy to Clipboard** (Rounded Number).
-6. **Text**: `https://YOUR-SITE/?burned=` followed by the *Rounded Number* variable.
-7. **Open URLs** (Text).
+3. **Calculate Statistics** → *Sum*.
+4. **Round Number**, then **Copy to Clipboard**.
+5. **Text**: `https://wombat66wombat.github.io/Food-App/?burned=` followed by the *Rounded Number* variable.
+6. **Open URLs**.
 
-You can also go to **Automation → Time of Day** (e.g. 9 pm daily) and set it to run “Sync calories”.
+Optional: Automation → *Time of Day* (e.g. 9 pm) → run it.
 
-The app reads `?burned=452` (plus an optional `&date=YYYY-MM-DD`) and sets that day's burned calories. The exact link to use is shown under **Me → Apple Watch calories**.
-
-> On iPhone, a Home Screen web app keeps its data separate from Safari. If you use the Home Screen version, run the shortcut, open the app and tap **📋** next to “Calories burned” to paste the number it copied.
+> A Home Screen web app keeps its data separate from Safari. If you use the Home Screen version, run the shortcut, open the app and tap **📋** next to “Calories burned”.
 
 ## Project layout
-
 ```
-index.html            app shell
-css/styles.css        styles (light + dark mode)
-js/app.js             UI: Today, Plan, Ideas, Me
-js/parser.js          free text → food items with calories/macros
-js/foods.js           built-in food database (~170 foods, per 100 g)
-js/recipes.js         meal ideas used for recommendations and planning
-js/recommend.js       ranking by budget, likes, diet and allergies
-js/store.js           localStorage persistence and date helpers
-sw.js                 offline cache
-tests/                node:test unit tests
+index.html          app shell + tab bar
+css/styles.css      one theme (tokens, light/dark, accent-tinted)
+js/app.js           navigation, events, Apple Watch URL sync
+js/core.js          shared state, sheet, toast
+js/theme.js         palettes, light/dark, wallpaper color extraction
+js/food.js          Food & Meals views, deficit logic
+js/parser.js        free text → foods with calories/macros
+js/foods.js         food database (~170 foods)
+js/recipes.js       meal ideas
+js/recommend.js     ranking by budget & preferences
+js/timetable.js     weekly timetable
+js/mandarin.js      flashcards, pinyin tones, spaced repetition, writing pad
+js/focus.js         Fokus timer, steps, checklist
+js/settings.js      settings
+js/store.js         localStorage + date helpers
+sw.js               offline cache
+tests/              node:test unit tests
 ```
 
-Calorie values are estimates. This is not medical advice.
+All data stays on your device. Calorie values are estimates. This is not medical advice.

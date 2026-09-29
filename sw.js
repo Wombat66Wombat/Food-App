@@ -1,8 +1,9 @@
 // Offline support: serve from the network when possible, fall back to the cache.
-const CACHE = 'food-planner-v1';
+const CACHE = 'my-space-v2';
 const SHELL = [
   './', 'index.html', 'css/styles.css', 'manifest.webmanifest', 'icons/icon.svg',
-  'js/app.js', 'js/foods.js', 'js/parser.js', 'js/recipes.js', 'js/recommend.js', 'js/store.js',
+  'js/app.js', 'js/core.js', 'js/store.js', 'js/theme.js', 'js/food.js', 'js/foods.js', 'js/parser.js',
+  'js/recipes.js', 'js/recommend.js', 'js/timetable.js', 'js/mandarin.js', 'js/focus.js', 'js/settings.js',
 ];
 
 self.addEventListener('install', (event) => {

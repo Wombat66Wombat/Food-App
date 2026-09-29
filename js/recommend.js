@@ -140,11 +140,11 @@ export function planDays(dateKeys, prefs, goal) {
 export function dailyTips({ goal, eaten, burned, remaining, protein, proteinGoal, loggedSlots, hour }) {
   const tips = [];
   if (burned > 0) {
-    tips.push(`🔥 You burned ${burned} kcal today — nice work! That's already counted in your budget.`);
+    tips.push(`🔥 You burned ${burned} kcal today — nice work! That all goes toward your deficit.`);
   }
   if (remaining < -150) {
     const walk = Math.round(-remaining / 5); // ~5 kcal per minute brisk walking
-    tips.push(`You're ${-remaining} kcal over. No stress — a ${walk}-minute walk would roughly even it out, or go lighter tomorrow.`);
+    tips.push(`You're ${-remaining} kcal over your eating target. No stress — a ${walk}-minute walk would win that deficit back, or go lighter tomorrow.`);
   } else if (remaining >= -150 && remaining <= 150 && eaten > 0) {
     tips.push('🎯 Right on target for today.');
   }
