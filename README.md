@@ -19,6 +19,7 @@ Your organized space in one app: a calorie **deficit** tracker, meal planner, **
 
 ### 🗓️ Timetable
 - A weekly schedule that repeats every week: classes, work, gym… Add an entry to several days at once and give it a color.
+- **Week A / Week B:** tap "School has Week A / Week B?", say whether this week is A or B, and the app alternates every Monday. Each lesson can be every week, only A or only B. After holidays, tap the **Week A/B** badge to correct it.
 - The Day view shows **Now** and **Next**, with how long until the next thing starts. The Week view shows the whole week.
 
 ### 🀄 中文 Mandarin flashcards

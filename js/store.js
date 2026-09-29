@@ -22,6 +22,7 @@ export const DEFAULT_SETTINGS = {
   customFoods: [], // [{ name, kcal, protein }] per serving
   calc: null, // last inputs of the goal calculator
   mandarinDaily: 5, // new flashcards to write per day
+  abWeeks: { enabled: false, anchor: null }, // school Week A / Week B; anchor = a Monday that is Week A
   theme: DEFAULT_THEME,
 };
 
@@ -29,12 +30,13 @@ export function normalizeState(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const settings = { ...DEFAULT_SETTINGS, ...(s.settings || {}) };
   settings.theme = { ...DEFAULT_THEME, ...(s.settings?.theme || {}) };
+  settings.abWeeks = { ...DEFAULT_SETTINGS.abWeeks, ...(s.settings?.abWeeks || {}) };
   return {
     settings,
     days: s.days || {}, // { 'YYYY-MM-DD': { entries: [], burned, burnedSource, burnedAt } }
     plan: s.plan || {}, // { 'YYYY-MM-DD': { breakfast: { recipeId } | { text }, ... } }
     shopping: s.shopping || {}, // { weekStartKey: [checked item names] }
-    timetable: s.timetable || [], // [{ id, day (0 = Mon), start 'HH:MM', end, title, place, color }]
+    timetable: s.timetable || [], // [{ id, day (0 = Mon), start 'HH:MM', end, title, place, color, weeks: 'both' | 'A' | 'B' }]
     cards: s.cards || [], // [{ id, hanzi, pinyin, meaning, example, created, box, due, reviews, correct }]
     mandarin: { log: {}, ...(s.mandarin || {}) }, // log: { date: { added, reviewed } }
     focus: { steps: [], checklist: {}, stats: {}, timer: null, ...(s.focus || {}) },

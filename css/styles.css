@@ -478,3 +478,7 @@ body.has-wallpaper::before { content: ""; position: fixed; inset: 0; z-index: -2
 body.has-wallpaper::after { content: ""; position: fixed; inset: 0; z-index: -1; background: color-mix(in srgb, var(--bg) 72%, transparent); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 body.has-wallpaper { background: transparent; }
 body.has-wallpaper .topbar { background: color-mix(in srgb, var(--bg) 60%, transparent); }
+
+/* Week A / Week B */
+.ab-badge { background: var(--brand); color: var(--on-brand); font-weight: 700; font-size: 0.8rem; padding: 4px 10px; border-radius: 99px; cursor: pointer; }
+.ab-tag { font-size: 0.7rem; font-weight: 700; background: var(--brand-soft); color: var(--brand-text); padding: 1px 6px; border-radius: 6px; vertical-align: middle; }
