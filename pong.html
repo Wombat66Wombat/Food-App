@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>Pong</title>
+  <meta name="theme-color" content="#0e1411">
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <style>
+    :root { --bg: #0e1411; --fg: #e8efe9; --muted: #93a198; --accent: #22c55e; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--fg); font-family: system-ui, -apple-system, sans-serif; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 16px; touch-action: none; overscroll-behavior: none; }
+    header { width: 100%; max-width: 800px; display: flex; justify-content: space-between; align-items: center; }
+    a, button { color: var(--accent); font: inherit; font-weight: 600; }
+    a { text-decoration: none; }
+    button { background: transparent; border: 1px solid #2a352e; border-radius: 10px; padding: 6px 12px; cursor: pointer; }
+    canvas { width: 100%; max-width: 800px; aspect-ratio: 4 / 3; max-height: calc(100vh - 120px); object-fit: contain; background: #000; border-radius: 12px; display: block; }
+    .hint { color: var(--muted); font-size: 0.85rem; text-align: center; }
+  </style>
+</head>
+<body>
+  <header>
+    <a href="./">← Back</a>
+    <strong>🏓 Pong</strong>
+    <button id="mode">1 player</button>
+  </header>
+  <canvas id="game" width="800" height="600" aria-label="Pong game"></canvas>
+  <div class="hint" id="hint">Left: W / S · Right: ↑ / ↓ · Touch: drag your half · Space / tap to start · P to pause</div>
+
+  <script type="module">
+    const W = 800, H = 600, PAD_W = 12, PAD_H = 90, BALL = 12, WIN = 7;
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const modeBtn = document.getElementById('mode');
+
+    const left = { y: H / 2 - PAD_H / 2, score: 0, up: false, down: false };
+    const right = { y: H / 2 - PAD_H / 2, score: 0, up: false, down: false };
+    const ball = { x: W / 2, y: H / 2, vx: 0, vy: 0 };
+    let twoPlayer = false;
+    let state = 'ready'; // ready | playing | paused | over
+    let winner = '';
+
+    function serve(dir = Math.random() < 0.5 ? -1 : 1) {
+      ball.x = W / 2; ball.y = H / 2;
+      const angle = (Math.random() * 0.8 - 0.4);
+      const speed = 360;
+      ball.vx = Math.cos(angle) * speed * dir;
+      ball.vy = Math.sin(angle) * speed;
+    }
+
+    function reset() {
+      left.score = right.score = 0;
+      left.y = right.y = H / 2 - PAD_H / 2;
+      winner = '';
+      serve();
+      state = 'ready';
+    }
+
+    function start() {
+      if (state === 'over') reset();
+      if (state === 'ready' || state === 'paused') state = 'playing';
+    }
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    function movePaddle(p, dt) {
+      const speed = 480;
+      if (p.up) p.y -= speed * dt;
+      if (p.down) p.y += speed * dt;
+      p.y = clamp(p.y, 0, H - PAD_H);
+    }
+
+    function ai(dt) {
+      // Track the ball with a capped speed so the computer can be beaten.
+      const target = ball.vx > 0 ? ball.y - PAD_H / 2 : H / 2 - PAD_H / 2;
+      const diff = target - right.y;
+      const max = 330 * dt;
+      right.y = clamp(right.y + clamp(diff, -max, max), 0, H - PAD_H);
+    }
+
+    function bounce(p, x) {
+      // Angle depends on where the ball hits the paddle; speed up a little each hit.
+      const rel = (ball.y + BALL / 2 - (p.y + PAD_H / 2)) / (PAD_H / 2);
+      const angle = clamp(rel, -1, 1) * (Math.PI / 3.5);
+      const speed = Math.min(Math.hypot(ball.vx, ball.vy) * 1.06, 900);
+      const dir = ball.vx > 0 ? -1 : 1;
+      ball.vx = Math.cos(angle) * speed * dir;
+      ball.vy = Math.sin(angle) * speed;
+      ball.x = x;
+      beep(520);
+    }
+
+    function point(p) {
+      p.score++;
+      beep(220);
+      if (p.score >= WIN) {
+        state = 'over';
+        winner = p === left ? (twoPlayer ? 'Left player wins!' : 'You win!') : (twoPlayer ? 'Right player wins!' : 'Computer wins!');
+      } else {
+        serve(p === left ? 1 : -1);
+      }
+    }
+
+    function update(dt) {
+      movePaddle(left, dt);
+      if (twoPlayer) movePaddle(right, dt); else ai(dt);
+      if (state !== 'playing') return;
+
+      ball.x += ball.vx * dt;
+      ball.y += ball.vy * dt;
+
+      if (ball.y < 0) { ball.y = 0; ball.vy *= -1; beep(380); }
+      if (ball.y > H - BALL) { ball.y = H - BALL; ball.vy *= -1; beep(380); }
+
+      const lx = 24 + PAD_W, rx = W - 24 - PAD_W;
+      if (ball.vx < 0 && ball.x <= lx && ball.x >= lx - PAD_W - BALL && ball.y + BALL >= left.y && ball.y <= left.y + PAD_H) bounce(left, lx);
+      if (ball.vx > 0 && ball.x + BALL >= rx && ball.x + BALL <= rx + PAD_W + BALL && ball.y + BALL >= right.y && ball.y <= right.y + PAD_H) bounce(right, rx - BALL);
+
+      if (ball.x < -BALL) point(right);
+      if (ball.x > W) point(left);
+    }
+
+    function draw() {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.fillStyle = '#2a352e';
+      for (let y = 10; y < H; y += 30) ctx.fillRect(W / 2 - 2, y, 4, 16);
+
+      ctx.fillStyle = '#e8efe9';
+      ctx.font = 'bold 64px ui-monospace, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(left.score, W / 4, 80);
+      ctx.fillText(right.score, (3 * W) / 4, 80);
+
+      ctx.fillStyle = '#22c55e';
+      ctx.fillRect(24, left.y, PAD_W, PAD_H);
+      ctx.fillRect(W - 24 - PAD_W, right.y, PAD_W, PAD_H);
+      ctx.fillStyle = '#e8efe9';
+      ctx.fillRect(ball.x, ball.y, BALL, BALL);
+
+      const msg = { ready: 'Press Space or tap to start', paused: 'Paused', over: `${winner}  ·  Space / tap to play again` }[state];
+      if (msg) {
+        ctx.fillStyle = 'rgba(0,0,0,0.55)';
+        ctx.fillRect(0, H / 2 - 40, W, 80);
+        ctx.fillStyle = '#e8efe9';
+        ctx.font = 'bold 28px system-ui, sans-serif';
+        ctx.fillText(msg, W / 2, H / 2 + 10);
+      }
+    }
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min((now - last) / 1000, 1 / 30);
+      last = now;
+      update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    // Sound
+    let audio = null;
+    function beep(freq) {
+      try {
+        if (!audio) return;
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.type = 'square';
+        o.frequency.value = freq;
+        g.gain.setValueAtTime(0.05, audio.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + 0.08);
+        o.connect(g).connect(audio.destination);
+        o.start(); o.stop(audio.currentTime + 0.09);
+      } catch { /* no sound */ }
+    }
+    function unlockAudio() {
+      try { audio = audio || new (window.AudioContext || window.webkitAudioContext)(); } catch { /* ignore */ }
+    }
+
+    // Keyboard
+    const keys = { w: [left, 'up'], s: [left, 'down'], ArrowUp: [right, 'up'], ArrowDown: [right, 'down'] };
+    function key(e, down) {
+      const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+      let bind = keys[k];
+      // In 1-player mode the arrow keys also move your (left) paddle.
+      if (!twoPlayer && (k === 'ArrowUp' || k === 'ArrowDown')) bind = [left, k === 'ArrowUp' ? 'up' : 'down'];
+      if (bind) { bind[0][bind[1]] = down; e.preventDefault(); }
+      if (!down) return;
+      if (e.key === ' ') { unlockAudio(); start(); e.preventDefault(); }
+      if (k === 'p' && (state === 'playing' || state === 'paused')) state = state === 'playing' ? 'paused' : 'playing';
+    }
+    addEventListener('keydown', (e) => key(e, true));
+    addEventListener('keyup', (e) => key(e, false));
+    addEventListener('blur', () => { if (state === 'playing') state = 'paused'; });
+
+    // Touch / mouse: drag on your half of the table to move that paddle.
+    function pointer(e) {
+      const r = canvas.getBoundingClientRect();
+      const x = ((e.clientX - r.left) / r.width) * W;
+      const y = ((e.clientY - r.top) / r.height) * H;
+      const p = twoPlayer && x > W / 2 ? right : left;
+      p.y = clamp(y - PAD_H / 2, 0, H - PAD_H);
+    }
+    canvas.addEventListener('pointerdown', (e) => {
+      unlockAudio();
+      if (state !== 'playing') start();
+      canvas.setPointerCapture?.(e.pointerId);
+      pointer(e);
+    });
+    canvas.addEventListener('pointermove', (e) => { if (e.buttons || e.pointerType === 'touch') pointer(e); });
+
+    modeBtn.addEventListener('click', () => {
+      twoPlayer = !twoPlayer;
+      modeBtn.textContent = twoPlayer ? '2 players' : '1 player';
+      modeBtn.blur();
+      reset();
+    });
+
+    reset();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
