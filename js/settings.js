@@ -138,6 +138,11 @@ function renderSettings(el) {
       </div>
       <input type="file" id="import-file" accept="application/json,.json" hidden>
     </div>
+    <div class="card">
+      <h2>🏓 Break time</h2>
+      <div class="small muted">A quick game of Pong – play the computer or a friend.</div>
+      <a class="btn secondary" style="margin-top:8px;display:inline-block;text-decoration:none" href="pong.html">Play Pong</a>
+    </div>
     <div class="small muted" style="text-align:center">Calorie values are estimates. Not medical advice.</div>
   `;
 }
