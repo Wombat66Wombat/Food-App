@@ -1,9 +1,12 @@
 // Food: daily tracker with a calorie deficit goal, meal plan and meal ideas.
 
-import { parseMeal, totals } from './parser.js';
+import { parseMeal, totals, fold } from './parser.js';
 import { FOODS } from './foods.js';
-import { MEALS, MEAL_LABELS, MEAL_SHARE, getRecipe, recommend, slotTarget, planDays, dailyTips } from './recommend.js';
-import { dateKey, fromKey, addDays, mondayOf } from './store.js';
+import {
+  MEALS, MEAL_LABELS, MEAL_SHARE, CRAVINGS, IDEA_FILTERS, getRecipe, recommend, slotTarget, planDays, dailyTips, sharesWithSnackBudget,
+} from './recommend.js';
+import { dateKey, fromKey, addDays, mondayOf, weekdayIndex } from './store.js';
+import { weekType, eventsFor } from './timetable.js';
 import {
   state, ui, $, esc, uid, persist, render, actions, inputHandlers, changeHandlers, keyHandlers,
   toast, openSheet, closeSheet, setTopbarExtra,
@@ -17,6 +20,7 @@ Object.assign(ui, {
   mealsTab: 'plan',
   ideasSlot: null,
   ideasQuery: '',
+  ideasTag: null,
 });
 
 const fmtDate = (key, opts) => fromKey(key).toLocaleDateString(undefined, opts);
@@ -50,6 +54,38 @@ export const parse = (text) => parseMeal(text, customFoods());
 export function eatingTarget() {
   return Math.round(state.settings.goal * (1 - state.settings.deficitPct / 100));
 }
+
+// ---------- training days & evening snacks ----------
+
+const SPORT_WORDS = /\b(sports?|training|train|gym|fitness|workout|football|soccer|fussball|basketball|handball|volleyball|tennis|badminton|hockey|rugby|swim\w*|schwimm\w*|running|run|lauf\w*|athletics|leichtathletik|dance|tanz\w*|judo|karate|boxing|climbing|klettern|rowing|rudern|cycling|pe)\b/;
+
+export function isTrainingDay(key = dateKey()) {
+  const ev = state.settings.evening;
+  const day = weekdayIndex(key);
+  if (ev.sportDays.includes(day)) return true;
+  if (!ev.autoTimetable) return false;
+  return eventsFor(day, weekType(key)).some((e) => SPORT_WORDS.test(fold(e.title)));
+}
+
+// Calories saved for snacks. On training days that's a bigger evening budget.
+export function snackBudget(key = dateKey()) {
+  const target = eatingTarget();
+  if (!isTrainingDay(key)) return Math.round((target * MEAL_SHARE.snack) / 10) * 10;
+  return state.settings.evening.snackBudget || Math.round((target * 0.18) / 10) * 10;
+}
+
+export function sharesFor(key) {
+  return isTrainingDay(key) ? sharesWithSnackBudget(eatingTarget(), snackBudget(key)) : MEAL_SHARE;
+}
+
+function snackKcal(key) {
+  return Math.round((state.days[key]?.entries || []).filter((e) => e.meal === 'snack').reduce((sum, e) => sum + e.kcal, 0));
+}
+
+const toMin = (hhmm) => {
+  const [h, m] = String(hhmm || '19:00').split(':').map(Number);
+  return h * 60 + (m || 0);
+};
 
 function getDay(key) {
   if (!state.days[key]) state.days[key] = { entries: [], burned: 0 };
@@ -231,12 +267,15 @@ function renderToday(el) {
     const kcal = Math.round(entries.reduce((sum, e) => sum + e.kcal, 0));
     const open = ui.openAdd === meal;
     const draft = ui.drafts[meal] || '';
-    const target = slotTarget(meal, { goal: s.target, remaining: s.remaining, loggedSlots: s.loggedSlots });
-    const ideas = open ? recommend({ slot: meal, target, prefs: state.settings, limit: 5 }) : [];
+    const target = meal === 'snack'
+      ? Math.max(Math.min(snackBudget(key) - snackKcal(key), Math.max(s.remaining, 0)), 80)
+      : slotTarget(meal, { goal: s.target, remaining: s.remaining, loggedSlots: s.loggedSlots, shares: sharesFor(key) });
+    const ideas = open ? recommend({ slot: meal, target, prefs: state.settings, limit: 6, maxKcal: meal === 'snack' ? target : null, filling: meal === 'snack' ? 0.5 : 0 }) : [];
     return `<div class="card">
       <div class="meal-head">
         <h2>${MEAL_LABELS[meal]}</h2>
-        <div class="row"><span class="meal-kcal">${kcal ? `${kcal} kcal` : ''}</span>
+        <div class="row"><span class="meal-kcal">${kcal ? `${kcal}${meal === 'snack' ? ` / ${snackBudget(key)}` : ''} kcal` : ''}</span>
+          ${meal === 'snack' ? '<button class="btn small burn" data-action="snack-attack" title="Snack attack">🆘</button>' : ''}
           <button class="btn small ${open ? 'secondary' : ''}" data-action="toggle-add" data-meal="${meal}">${open ? 'Close' : '+ Add'}</button></div>
       </div>
       ${entries.length ? `<ul class="entries">${entries.map((e) => `<li class="entry">
@@ -289,6 +328,8 @@ function renderToday(el) {
       </div>
     </div>
 
+    ${isToday ? eveningCard(key, s) : ''}
+
     ${mealCards}
 
     <div class="card burn-card">
@@ -316,6 +357,91 @@ function renderToday(el) {
     }
     ui.focusAdd = false;
   }
+}
+
+// ---------- Evening / after sports ----------
+
+function eveningCard(key, s) {
+  const training = isTrainingDay(key);
+  const now = new Date().getHours() * 60 + new Date().getMinutes();
+  const home = toMin(state.settings.evening.homeTime);
+  if (!training && now < home - 60) return '';
+  const budget = snackBudget(key);
+  const used = snackKcal(key);
+  const left = Math.max(Math.min(budget - used, Math.max(s.remaining, 0)), 0);
+  const pct = Math.min(used / Math.max(budget, 1), 1);
+  const before = training && now < home - 120;
+  const pre = before ? recommend({ slot: 'snack', tag: 'pre-workout', target: 150, prefs: state.settings, limit: 4, maxKcal: 220 }) : [];
+  const post = left > 0
+    ? recommend({ slot: 'snack', tag: training ? 'post-workout' : 'filling', target: Math.min(left, 250), prefs: state.settings, limit: 5, maxKcal: left, filling: 0.8 })
+    : [];
+
+  return `<div class="card evening-card ${now >= home - 60 ? 'live' : ''}">
+    <div class="row between"><h2 style="margin:0">${training ? '🏃 Training day' : '🌙 Evening'}</h2>
+      <span class="small muted">home ~${esc(state.settings.evening.homeTime)}</span></div>
+    ${before ? `<div class="small" style="margin-top:6px">⚡ <b>Eat a small snack 1–2 h before sports.</b> Arriving home less hungry is the #1 trick against evening snack attacks.</div>
+      <div class="quick-ideas">${pre.map(({ recipe }) => `<button class="pill" data-action="quick-log" data-id="${recipe.id}" data-meal="snack">${esc(recipe.name)} <b>${Math.round(recipe.kcal)}</b></button>`).join('')}</div>` : ''}
+    <div class="row between" style="margin-top:8px"><span>${training ? 'Saved for after sports' : 'Snack budget tonight'}</span><b>${left} kcal left</b></div>
+    <div class="bar big"><i style="width:${pct * 100}%;background:${used > budget ? 'var(--danger)' : 'var(--burn)'}"></i></div>
+    <div class="small muted" style="margin-top:4px">${used} of ${budget} kcal snacks used${training ? ' · your other meals are a bit smaller today to make room' : ''}</div>
+    ${post.length ? `<div class="small muted" style="margin-top:10px">${training ? 'Recovery snacks that fill you up:' : 'Filling picks that fit:'}</div>
+      <div class="quick-ideas">${post.map(({ recipe }) => `<button class="pill" data-action="quick-log" data-id="${recipe.id}" data-meal="snack">${esc(recipe.name)} <b>${Math.round(recipe.kcal)}</b></button>`).join('')}</div>` : ''}
+    <button class="btn burn block" style="margin-top:10px" data-action="snack-attack">🆘 Snack attack — help!</button>
+  </div>`;
+}
+
+let waitTimer = null;
+function startSnackWait() {
+  clearInterval(waitTimer);
+  const end = Date.now() + 10 * 60 * 1000;
+  const tick = () => {
+    const el = $('#sa-wait');
+    if (!el) { clearInterval(waitTimer); return; }
+    const sec = Math.max(0, Math.round((end - Date.now()) / 1000));
+    el.textContent = sec ? `⏱️ ${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')} — still hungry after? Pick one above, no guilt.` : '✅ 10 minutes done. Still hungry? Pick one of the snacks above.';
+    if (!sec) clearInterval(waitTimer);
+  };
+  tick();
+  waitTimer = setInterval(tick, 1000);
+}
+
+function openSnackAttack(craving) {
+  ui.saCraving = craving;
+  const key = dateKey();
+  const s = summary(key);
+  const left = Math.max(Math.min(snackBudget(key) - snackKcal(key), Math.max(s.remaining, 0)), 0);
+  const budgetGone = left < 60;
+  const picks = budgetGone
+    ? recommend({ slot: 'snack', tag: 'volume', target: 80, prefs: state.settings, limit: 5, maxKcal: 110 })
+    : recommend({ slot: 'snack', tag: craving, target: Math.min(left, 220), prefs: state.settings, limit: 6, maxKcal: left, filling: craving === 'filling' ? 1 : 0.5 });
+
+  openSheet('🆘 Snack attack', `
+    <div class="sa-step ${ui.saWater ? 'done' : ''}">
+      <b>1. Drink a big glass of water 💧</b>
+      <div class="small muted">After sports, thirst often feels like hunger.</div>
+      ${ui.saWater ? '<div class="small">✓ Done</div>' : '<button class="btn secondary small" data-action="sa-water">Done ✓</button>'}
+    </div>
+    <div class="sa-step">
+      <b>2. What are you craving?</b>
+      <div class="chips" style="margin-top:6px">${Object.entries(CRAVINGS).map(([k, l]) => `<button class="toggle-chip brand" data-action="sa-craving" data-craving="${k}" aria-pressed="${craving === k}">${l}</button>`).join('')}</div>
+    </div>
+    <div class="sa-step">
+      <b>3. ${budgetGone ? 'Budget is used up — try a “free” snack' : `Pick one — all fit your ${left} kcal`}</b>
+      ${budgetGone ? '<div class="small muted">Or: tea, sparkling water, chewing gum, brushing your teeth (= kitchen closed 🪥).</div>' : ''}
+      <div class="stack" style="margin-top:6px">
+        ${picks.length ? picks.map(({ recipe, reasons }) => `<button class="pick" data-action="sa-eat" data-id="${recipe.id}">
+          <div class="row"><b>${esc(recipe.name)}</b><span class="recipe-kcal">${Math.round(recipe.kcal)} kcal</span></div>
+          <div class="small muted">${esc(recipe.ingredients)}${reasons.includes('Keeps you full') ? ' · keeps you full' : ''}</div>
+        </button>`).join('') : '<div class="small muted">Nothing fits that craving right now — try another one.</div>'}
+      </div>
+    </div>
+    <div class="sa-step">
+      <b>4. Not sure you're really hungry?</b>
+      <button class="btn ghost small" data-action="sa-wait">Wait 10 minutes first</button>
+      <div class="small" id="sa-wait"></div>
+    </div>
+    <div class="small muted">Tip: put it on a plate and sit down — no eating straight from the bag.</div>
+  `, { onClose: () => { clearInterval(waitTimer); ui.saWater = false; } });
 }
 
 // ---------- Meals: plan ----------
@@ -376,8 +502,8 @@ function renderPlan() {
 
 function openSlotPicker(key, slot, query = '') {
   const current = state.plan[key]?.[slot];
-  const target = Math.round(eatingTarget() * MEAL_SHARE[slot]);
-  const recs = recommend({ slot: query ? null : slot, target, prefs: state.settings, query, limit: 25 });
+  const target = Math.round(eatingTarget() * sharesFor(key)[slot]);
+  const recs = recommend({ slot: query ? null : slot, target, prefs: state.settings, query, limit: 30 });
   openSheet(`${fmtDate(key, { weekday: 'long' })} · ${MEAL_LABELS[slot]}`, `
     <div class="stack">
       <label class="field"><span>Write your own</span>
@@ -438,8 +564,9 @@ function openShopping() {
 function renderIdeas() {
   const s = summary(dateKey());
   const slot = ui.ideasSlot || suggestedSlot();
-  const target = slotTarget(slot, { goal: s.target, remaining: s.remaining, loggedSlots: s.loggedSlots });
-  const recs = recommend({ slot: ui.ideasQuery ? null : slot, target, prefs: state.settings, query: ui.ideasQuery, limit: 12 });
+  const target = slotTarget(slot, { goal: s.target, remaining: s.remaining, loggedSlots: s.loggedSlots, shares: sharesFor(dateKey()) });
+  const anySlot = ui.ideasQuery || ui.ideasTag;
+  const recs = recommend({ slot: anySlot ? null : slot, target, prefs: state.settings, query: ui.ideasQuery, tag: ui.ideasTag, limit: 16, filling: ui.ideasTag === 'post-workout' ? 0.5 : 0 });
   const st = state.settings;
   const hasPrefs = st.likes.length || st.dislikes.length || st.diet !== 'none';
 
@@ -447,13 +574,14 @@ function renderIdeas() {
     <div class="card">
       <h2>${s.remaining > 0 ? `You can eat <span style="color:var(--brand)">${s.remaining} kcal</span> more today` : `You've reached today's eating target`}</h2>
       <div class="small muted">Suggestions for ${MEAL_LABELS[slot].toLowerCase()} aim for about ${target} kcal.</div>
-      <div class="quick-ideas" style="margin-top:6px">${MEALS.map((m) => `<button class="pill ${m === slot && !ui.ideasQuery ? 'active' : ''}" data-action="ideas-slot" data-meal="${m}">${MEAL_LABELS[m]}</button>`).join('')}</div>
+      <div class="quick-ideas" style="margin-top:6px">${MEALS.map((m) => `<button class="pill ${m === slot && !anySlot ? 'active' : ''}" data-action="ideas-slot" data-meal="${m}">${MEAL_LABELS[m]}</button>`).join('')}</div>
+      <div class="quick-ideas">${Object.entries(IDEA_FILTERS).map(([k, l]) => `<button class="pill ${ui.ideasTag === k ? 'active' : ''}" data-action="ideas-tag" data-tag="${k}">${l}</button>`).join('')}</div>
       <input type="search" id="ideas-search" placeholder="Craving something? (chicken, pasta, sweet…)" value="${esc(ui.ideasQuery)}" style="margin-top:8px">
       ${hasPrefs ? '' : `<div class="hint" style="margin-top:10px">Tell me what you like for better ideas → <a href="#" data-action="goto" data-view="settings" data-anchor="prefs">Preferences</a></div>`}
     </div>
     ${recs.length ? recs.map(({ recipe, reasons }) => recipeCard(recipe, {
       reasons,
-      actions: `<button class="btn small" data-action="quick-log" data-id="${recipe.id}" data-meal="${ui.ideasQuery ? recipe.meal : slot}">Log to today</button>
+      actions: `<button class="btn small" data-action="quick-log" data-id="${recipe.id}" data-meal="${anySlot ? recipe.meal : slot}">Log to today</button>
         <button class="btn secondary small" data-action="plan-recipe" data-id="${recipe.id}">Add to plan</button>
         <span class="spacer"></span>
         <button class="icon-btn" data-action="fav" data-id="${recipe.id}" aria-label="Favourite" title="I like this">${st.favorites.includes(recipe.id) ? '❤️' : '🤍'}</button>
@@ -558,7 +686,7 @@ Object.assign(actions, {
   'week-today': () => { ui.weekStart = mondayOf(dateKey()); render(); },
   autofill: () => {
     const keys = weekKeys();
-    const generated = planDays(keys, state.settings, eatingTarget());
+    const generated = planDays(keys, state.settings, eatingTarget(), sharesFor);
     let filled = 0;
     for (const key of keys) {
       state.plan[key] = state.plan[key] || {};
@@ -619,7 +747,22 @@ Object.assign(actions, {
     toast(count ? `Logged ${count} meal${count === 1 ? '' : 's'} for ${fmtDate(date, { weekday: 'long' })}` : 'Already logged');
   },
 
-  'ideas-slot': ({ meal }) => { ui.ideasSlot = meal; ui.ideasQuery = ''; render(); },
+  'ideas-slot': ({ meal }) => { ui.ideasSlot = meal; ui.ideasQuery = ''; ui.ideasTag = null; render(); },
+  'ideas-tag': ({ tag }) => { ui.ideasTag = ui.ideasTag === tag ? null : tag; render(); },
+  'snack-attack': ({ craving }) => openSnackAttack(craving || null),
+  'sa-water': () => { ui.saWater = true; openSnackAttack(ui.saCraving); },
+  'sa-craving': ({ craving }) => openSnackAttack(ui.saCraving === craving ? null : craving),
+  'sa-eat': ({ id }) => {
+    const recipe = getRecipe(id);
+    logRecipe(dateKey(), recipe, 'snack');
+    const day = getDay(dateKey());
+    day.snackWins = (day.snackWins || 0) + 1;
+    persist();
+    closeSheet();
+    render();
+    toast(`Enjoy your ${recipe.name.toLowerCase()} 🙌 Put it on a plate & sit down.`);
+  },
+  'sa-wait': () => startSnackWait(),
   fav: ({ id }) => {
     const favs = state.settings.favorites;
     state.settings.favorites = favs.includes(id) ? favs.filter((x) => x !== id) : [...favs, id];

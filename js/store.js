@@ -23,6 +23,7 @@ export const DEFAULT_SETTINGS = {
   calc: null, // last inputs of the goal calculator
   mandarinDaily: 5, // new flashcards to write per day
   abWeeks: { enabled: false, anchor: null }, // school Week A / Week B; anchor = a Monday that is Week A
+  evening: { sportDays: [], autoTimetable: true, homeTime: '19:00', snackBudget: null }, // after-sports snack plan
   theme: DEFAULT_THEME,
 };
 
@@ -31,6 +32,7 @@ export function normalizeState(raw) {
   const settings = { ...DEFAULT_SETTINGS, ...(s.settings || {}) };
   settings.theme = { ...DEFAULT_THEME, ...(s.settings?.theme || {}) };
   settings.abWeeks = { ...DEFAULT_SETTINGS.abWeeks, ...(s.settings?.abWeeks || {}) };
+  settings.evening = { ...DEFAULT_SETTINGS.evening, ...(s.settings?.evening || {}) };
   return {
     settings,
     days: s.days || {}, // { 'YYYY-MM-DD': { entries: [], burned, burnedSource, burnedAt } }

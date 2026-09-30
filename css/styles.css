@@ -482,3 +482,10 @@ body.has-wallpaper .topbar { background: color-mix(in srgb, var(--bg) 60%, trans
 /* Week A / Week B */
 .ab-badge { background: var(--brand); color: var(--on-brand); font-weight: 700; font-size: 0.8rem; padding: 4px 10px; border-radius: 99px; cursor: pointer; }
 .ab-tag { font-size: 0.7rem; font-weight: 700; background: var(--brand-soft); color: var(--brand-text); padding: 1px 6px; border-radius: 6px; vertical-align: middle; }
+
+/* After-sports evening plan & snack attack */
+.evening-card { border-color: color-mix(in srgb, var(--burn) 35%, var(--line)); }
+.evening-card.live { border-width: 2px; background: color-mix(in srgb, var(--burn) 6%, var(--card)); }
+.sa-step { background: var(--bg); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+.sa-step.done { opacity: 0.7; }
+.sa-step .stack { width: 100%; }

@@ -25,3 +25,15 @@ test('eating over maintenance misses the goal even with a workout', () => {
 test('a day with no food is not counted as met', () => {
   assert.equal(summary('2026-01-01').met, false);
 });
+
+test('training days come from settings or from sports in the timetable', async () => {
+  const { isTrainingDay, snackBudget } = await import('../js/food.js');
+  state.settings.evening = { sportDays: [0], autoTimetable: true, homeTime: '19:00', snackBudget: null };
+  state.timetable = [{ id: 'x', day: 2, start: '17:00', end: '18:30', title: 'Fußball Training', weeks: 'both' }];
+  assert.equal(isTrainingDay('2026-09-28'), true); // Monday, set in settings
+  assert.equal(isTrainingDay('2026-09-29'), false); // Tuesday
+  assert.equal(isTrainingDay('2026-09-30'), true); // Wednesday, "Fußball" in timetable
+  assert.ok(snackBudget('2026-09-30') > snackBudget('2026-09-29'));
+  state.settings.evening.autoTimetable = false;
+  assert.equal(isTrainingDay('2026-09-30'), false);
+});

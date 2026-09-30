@@ -4,7 +4,8 @@ import { DIETS, ALLERGIES } from './recommend.js';
 import { dateKey, normalizeState } from './store.js';
 import { state, $, esc, persist, render, actions, changeHandlers, keyHandlers, toast, setTopbarExtra } from './core.js';
 import { PALETTES, applyTheme, processWallpaper, isDark } from './theme.js';
-import { eatingTarget } from './food.js';
+import { eatingTarget, isTrainingDay } from './food.js';
+import { dateKey as todayKey, addDays, mondayOf } from './store.js';
 
 const LIKE_SUGGESTIONS = ['chicken', 'salmon', 'eggs', 'pasta', 'rice', 'tofu', 'avocado', 'spicy', 'mexican', 'asian', 'italian', 'indian', 'sweet', 'quick', 'high-protein', 'low-carb'];
 const DEFICITS = [[0, 'No deficit — maintain weight'], [10, '10% — gentle'], [15, '15% — steady'], [20, '20% — recommended max for most people'], [25, '25% — aggressive']];
@@ -77,6 +78,19 @@ function renderSettings(el) {
         <div><b>${perWeek.toFixed(2)}</b><span>kg / week</span></div>
       </div>
       <div class="small muted">Burned calories from your Apple Watch don't raise what you eat — they make your deficit bigger. At the end of each day you'll see if you met your goal.</div>
+    </div>
+
+    <div class="card" id="evening">
+      <h2>🏃 After-sports snacking</h2>
+      <div class="small muted">On training days the app saves a bigger snack budget for when you get home hungry, and makes the other meals a bit smaller so your day still adds up.</div>
+      <h3>Training days</h3>
+      <div class="chips">${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d, i) => `<button class="toggle-chip brand" data-action="toggle-sport-day" data-day="${i}" aria-pressed="${st.evening.sportDays.includes(i)}">${d}</button>`).join('')}</div>
+      <label class="switch-row"><input type="checkbox" id="ev-auto" ${st.evening.autoTimetable ? 'checked' : ''}><span>Also detect sports from my timetable (gym, football, training, swimming…)</span></label>
+      <div class="small muted" style="margin-top:4px">This week: ${[0, 1, 2, 3, 4, 5, 6].filter((i) => isTrainingDay(addDays(mondayOf(todayKey()), i))).map((i) => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][i]).join(', ') || 'no training days yet'}</div>
+      <div class="row" style="margin-top:10px">
+        <label class="field grow"><span>Home from sports at</span><input type="time" id="ev-home" value="${esc(st.evening.homeTime)}"></label>
+        <label class="field grow"><span>Snack budget (kcal)</span><input type="number" inputmode="numeric" id="ev-budget" min="100" max="800" step="10" value="${st.evening.snackBudget || ''}" placeholder="${Math.round((eatingTarget() * 0.18) / 10) * 10} (auto)"></label>
+      </div>
     </div>
 
     <div class="card" id="prefs">
@@ -159,6 +173,13 @@ function addChip(list, raw) {
 }
 
 Object.assign(actions, {
+  'toggle-sport-day': ({ day }) => {
+    const d = Number(day);
+    const days = state.settings.evening.sportDays;
+    state.settings.evening.sportDays = days.includes(d) ? days.filter((x) => x !== d) : [...days, d].sort();
+    persist();
+    render();
+  },
   'theme-mode': ({ mode }) => { state.settings.theme.mode = mode; persist(); applyTheme(); render(); },
   'theme-palette': ({ palette }) => { state.settings.theme.palette = palette; persist(); applyTheme(); render(); },
   'wallpaper-pick': () => $('#wallpaper-file').click(),
@@ -258,6 +279,15 @@ changeHandlers.push((e) => {
     st.deficitPct = Number(t.value); persist(); render();
   } else if (t.id === 'diet-select') {
     st.diet = t.value; persist();
+  } else if (t.id === 'ev-auto') {
+    st.evening.autoTimetable = t.checked; persist(); render();
+  } else if (t.id === 'ev-home') {
+    if (t.value) { st.evening.homeTime = t.value; persist(); }
+  } else if (t.id === 'ev-budget') {
+    const v = Math.round(Number(t.value));
+    st.evening.snackBudget = v >= 50 && v <= 1500 ? v : null;
+    persist();
+    render();
   } else if (t.id === 'md-daily') {
     st.mandarinDaily = Number(t.value); persist();
   } else if (t.id === 'wall-bg') {

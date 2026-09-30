@@ -13,6 +13,11 @@ Your organized space in one app: a calorie **deficit** tracker, meal planner, **
 - Type what you ate the way you'd say it, e.g. `2 eggs, 1 slice toast with butter, coffee with milk`, and you'll see calories and macros as you type.
 - To sync burned calories, see "Apple Watch sync" below.
 
+- **Training days & evening snacking:** mark your sport days in Settings, or let the app spot them in your timetable (gym, football, Fußball, swimming…). On those days it saves a bigger snack budget for when you get home, and the other meals shrink a little so your day still adds up.
+  - Before sports it reminds you to eat a small snack 1–2 hours ahead. Arriving home less hungry is the #1 trick against evening snacking.
+  - **🆘 Snack attack:** a quick helper for when the cravings hit. Drink water, pick what you're craving (sweet, salty, crunchy, creamy, really hungry), get snacks that fit your calories left, or wait 10 minutes first.
+- **138 meal ideas** (47 snacks), with filters: After sports, Before sports, Big & light, High protein, Quick, Treat, Sweet, Salty.
+
 ### 🥗 Meals
 - **Week plan:** plan each meal slot, or tap **✨ Fill empty slots** to fill them from your preferences. You can log a planned day in one tap and get a 🛒 shopping list.
 - **Ideas:** suggestions that fit what you can still eat today, ranked by your likes, dislikes, diet, allergies and ❤️ favourites.
@@ -91,3 +96,6 @@ tests/              node:test unit tests
 ```
 
 All data stays on your device. Calorie values are estimates. This is not medical advice.
+
+## 🏓 Pong
+A break-time game (Settings → Play Pong) with **10 levels**. Each one is faster than the last, and some add a twist: a moving wall, a smarter computer, tiny paddles, and a Boss level. Beat the computer to unlock the next level and earn up to ⭐⭐⭐ (the fewer points you let in, the more stars). There's also a 2-player mode.

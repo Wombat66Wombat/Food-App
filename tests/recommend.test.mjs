@@ -42,3 +42,28 @@ test('week plan fills every slot', () => {
   const plan = planDays(keys, prefs(), 2000);
   for (const k of keys) assert.equal(Object.keys(plan[k]).length, 4);
 });
+
+test('a bigger snack budget shrinks the other meals but keeps the day the same', async () => {
+  const { sharesWithSnackBudget } = await import('../js/recommend.js');
+  const s = sharesWithSnackBudget(1600, 320);
+  assert.equal(Math.round(s.snack * 1600), 320);
+  const sum = s.breakfast + s.lunch + s.dinner + s.snack;
+  assert.ok(Math.abs(sum - 1) < 1e-9);
+  assert.ok(s.dinner < 0.3);
+});
+
+test('snack attack picks respect the craving and the calories left', () => {
+  const recs = recommend({ slot: 'snack', tag: 'sweet', target: 150, maxKcal: 160, prefs: prefs(), limit: 20 });
+  assert.ok(recs.length >= 5);
+  for (const { recipe } of recs) {
+    assert.ok(recipe.tags.includes('sweet'), recipe.name);
+    assert.ok(recipe.kcal <= 176, `${recipe.name} ${recipe.kcal}`);
+  }
+});
+
+test('there are plenty of ideas for every meal', () => {
+  const count = (meal) => allRecipes().filter((r) => r.meal === meal).length;
+  assert.ok(count('snack') >= 40);
+  assert.ok(count('breakfast') >= 25 && count('lunch') >= 25 && count('dinner') >= 30);
+  assert.ok(allRecipes().filter((r) => r.tags.includes('post-workout')).length >= 12);
+});
