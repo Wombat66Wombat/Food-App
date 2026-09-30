@@ -21,6 +21,7 @@ Object.assign(ui, {
   ideasSlot: null,
   ideasQuery: '',
   ideasTag: null,
+  ideaIdx: {},
 });
 
 const fmtDate = (key, opts) => fromKey(key).toLocaleDateString(undefined, opts);
@@ -139,6 +140,35 @@ function addEntry(key, meal, text, name) {
   return entry;
 }
 
+// A planned meal counts as eaten while a logged entry made from it exists
+// (older data only has the `logged` flag).
+function isPlanLogged(key, slot) {
+  const value = state.plan[key]?.[slot];
+  if (!value) return false;
+  if ((state.days[key]?.entries || []).some((e) => e.fromPlan === slot)) return true;
+  return Boolean(value.logged && !value.tracked);
+}
+
+function eatPlanned(key, slot) {
+  const value = state.plan[key]?.[slot];
+  const meal = plannedMeal(value);
+  if (!meal || isPlanLogged(key, slot)) return null;
+  const entry = addEntry(key, slot, meal.text, value.recipeId ? meal.name : null);
+  if (!entry) return null;
+  entry.fromPlan = slot;
+  value.logged = true;
+  value.tracked = true;
+  persist();
+  return entry;
+}
+
+function plannedStillToEat(key) {
+  return MEALS.reduce((sum, slot) => {
+    if (isPlanLogged(key, slot)) return sum;
+    return sum + (plannedMeal(state.plan[key]?.[slot])?.kcal || 0);
+  }, 0);
+}
+
 function logRecipe(key, recipe, meal = recipe.meal) {
   return addEntry(key, meal, recipe.ingredients, recipe.name);
 }
@@ -193,7 +223,7 @@ function recipeCard(r, { reasons = [], actions: buttons = '' } = {}) {
 function deficitCard(key, s) {
   const isToday = key === dateKey();
   const isPast = key < dateKey();
-  const pct = s.deficitGoal > 0 ? Math.max(0, Math.min(s.deficit / s.deficitGoal, 1)) : 1;
+  const pct = !s.logged ? 0 : s.deficitGoal > 0 ? Math.max(0, Math.min(s.deficit / s.deficitGoal, 1)) : 1;
   const fatKg = Math.max(s.deficit, 0) / 7700;
 
   let verdict;
@@ -271,7 +301,14 @@ function renderToday(el) {
       ? Math.max(Math.min(snackBudget(key) - snackKcal(key), Math.max(s.remaining, 0)), 80)
       : slotTarget(meal, { goal: s.target, remaining: s.remaining, loggedSlots: s.loggedSlots, shares: sharesFor(key) });
     const ideas = open ? recommend({ slot: meal, target, prefs: state.settings, limit: 6, maxKcal: meal === 'snack' ? target : null, filling: meal === 'snack' ? 0.5 : 0 }) : [];
-    return `<div class="card">
+    const planValue = state.plan[key]?.[meal];
+    const planned = planValue && !isPlanLogged(key, meal) ? plannedMeal(planValue) : null;
+    let idea = null;
+    if (!planned && !entries.length && !open && key >= dateKey()) {
+      const picks = recommend({ slot: meal, target, prefs: state.settings, limit: 5, maxKcal: meal === 'snack' ? target : null, filling: meal === 'snack' ? 0.5 : 0 });
+      idea = picks.length ? picks[(ui.ideaIdx[meal] || 0) % picks.length].recipe : null;
+    }
+    return `<div class="card ${planned ? 'has-plan' : ''}">
       <div class="meal-head">
         <h2>${MEAL_LABELS[meal]}</h2>
         <div class="row"><span class="meal-kcal">${kcal ? `${kcal}${meal === 'snack' ? ` / ${snackBudget(key)}` : ''} kcal` : ''}</span>
@@ -287,6 +324,21 @@ function renderToday(el) {
           <button class="icon-btn" data-action="edit-entry" data-id="${e.id}" aria-label="Edit">✎</button>
           <button class="icon-btn" data-action="delete-entry" data-id="${e.id}" aria-label="Delete">🗑</button>
         </div></li>`).join('')}</ul>` : ''}
+      ${planned ? `<div class="planned-row">
+        <div class="grow"><span class="planned-tag">📅 Planned</span> <b>${esc(planned.name)}</b>
+          <div class="small muted">${esc(planned.text)}</div></div>
+        <span class="entry-kcal">${planned.kcal}</span>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="btn small grow" data-action="eat-planned" data-date="${key}" data-slot="${meal}">✓ Ate it</button>
+        <button class="btn secondary small" data-action="pick-slot" data-date="${key}" data-slot="${meal}">⇄ Change</button>
+      </div>` : ''}
+      ${idea ? `<div class="idea-row">
+        <div class="grow"><span class="small muted">💡 Idea</span> <b>${esc(idea.name)}</b> <span class="small muted">· ${Math.round(idea.kcal)} kcal</span></div>
+        <button class="btn ghost small" data-action="plan-idea" data-date="${key}" data-slot="${meal}" data-id="${idea.id}">📅 Plan</button>
+        <button class="btn ghost small" data-action="quick-log" data-id="${idea.id}" data-meal="${meal}">✓ Eat</button>
+        <button class="icon-btn" data-action="next-idea" data-meal="${meal}" aria-label="Another idea" title="Another idea">↻</button>
+      </div>` : ''}
       ${open ? `<div class="add-box">
         <textarea id="add-${meal}" data-draft="${meal}" rows="2" placeholder="What did you eat? e.g. 2 eggs, 1 slice toast with butter, coffee with milk">${esc(draft)}</textarea>
         <div class="preview" id="preview-${meal}">${previewHtml(draft)}</div>
@@ -321,6 +373,12 @@ function renderToday(el) {
           <span class="total">Left to eat</span><span class="v total">${s.remaining}</span>
         </div>
       </div>
+      ${(() => {
+        const left = plannedStillToEat(key);
+        if (!left) return '';
+        const end = s.remaining - left;
+        return `<div class="plan-forecast">📅 Planned still to eat: <b>${left} kcal</b> → ${end >= 0 ? `you'd end the day with <b>${end} kcal</b> to spare` : `<span style="color:var(--danger)">${-end} kcal over your target</span>`}</div>`;
+      })()}
       <div class="macros">
         <div class="macro"><div class="name"><span>Protein</span><span>${Math.round(s.protein)}/${pGoal}g</span></div>${bar(s.protein, pGoal, 'var(--protein)')}</div>
         <div class="macro"><div class="name"><span>Carbs</span><span>${Math.round(s.carbs)}/${cGoal}g</span></div>${bar(s.carbs, cGoal, 'var(--carbs)')}</div>
@@ -468,7 +526,7 @@ function renderPlan() {
 
   const days = keys.map((key) => {
     const plan = state.plan[key] || {};
-    const meals = MEALS.map((slot) => ({ slot, meal: plannedMeal(plan[slot]), logged: plan[slot]?.logged }));
+    const meals = MEALS.map((slot) => ({ slot, meal: plannedMeal(plan[slot]), logged: isPlanLogged(key, slot) }));
     const total = meals.reduce((sum, m) => sum + (m.meal?.kcal || 0), 0);
     const hasAny = meals.some((m) => m.meal);
     return `<div class="card day-card ${key === today ? 'today' : ''}">
@@ -731,21 +789,23 @@ Object.assign(actions, {
     render();
   },
   'log-day': ({ date }) => {
-    const plan = state.plan[date] || {};
     let count = 0;
-    for (const slot of MEALS) {
-      const value = plan[slot];
-      if (!value || value.logged) continue;
-      const meal = plannedMeal(value);
-      if (meal && addEntry(date, slot, meal.text, value.recipeId ? meal.name : null)) {
-        value.logged = true;
-        count++;
-      }
-    }
-    persist();
+    for (const slot of MEALS) if (eatPlanned(date, slot)) count++;
     render();
     toast(count ? `Logged ${count} meal${count === 1 ? '' : 's'} for ${fmtDate(date, { weekday: 'long' })}` : 'Already logged');
   },
+  'eat-planned': ({ date, slot }) => {
+    const entry = eatPlanned(date, slot);
+    render();
+    if (entry) toast(`✓ ${entry.name || 'Meal'} logged (${Math.round(entry.kcal)} kcal)`);
+  },
+  'plan-idea': ({ date, slot, id }) => {
+    state.plan[date] = { ...(state.plan[date] || {}), [slot]: { recipeId: id } };
+    persist();
+    render();
+    toast(`📅 Planned ${getRecipe(id).name}`);
+  },
+  'next-idea': ({ meal }) => { ui.ideaIdx[meal] = (ui.ideaIdx[meal] || 0) + 1; render(); },
 
   'ideas-slot': ({ meal }) => { ui.ideasSlot = meal; ui.ideasQuery = ''; ui.ideasTag = null; render(); },
   'ideas-tag': ({ tag }) => { ui.ideasTag = ui.ideasTag === tag ? null : tag; render(); },
