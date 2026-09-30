@@ -49,9 +49,11 @@ export function singular(word) {
   return word;
 }
 
+// "Brötchen" -> "brotchen", "Knäckebrot" -> "knackebrot", "Soße" -> "sosse"
+export const fold = (text) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/ß/g, 'ss');
+
 function normalizeWords(text) {
-  return text
-    .toLowerCase()
+  return fold(text)
     .replace(/[^a-z0-9\s]/g, ' ')
     .split(/\s+/)
     .filter(Boolean)
@@ -159,7 +161,7 @@ const round1 = (n) => Math.round(n * 10) / 10;
 export function parseItem(raw, customFoods, { addOn = false } = {}) {
   const text = raw.trim().replace(/^(?:[-*•]|\d+[.)])\s+/, '');
   if (!text) return null;
-  let s = text.toLowerCase();
+  let s = fold(text);
   for (const [ch, rep] of Object.entries(UNICODE_FRACTIONS)) s = s.split(ch).join(rep);
 
   // Explicit calories always win: "pizza slice 285 kcal", "protein cookie 210cal".
